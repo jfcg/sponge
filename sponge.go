@@ -292,7 +292,8 @@ func (p *Prng) Seed(x []uint64) {
 	for i := 0; i < n; i++ {
 		p.b[i] ^= x[i]
 	}
-	// bits 10..14 of Prng.rn hold number of available limbs in buffer, initially zero
+	// bits 10..14 of Prng.rn hold number of available limbs in buffer
+	// initially zero, set to rate here
 	(*Sponge)(p).Perm(nil)
 	p.rn = p.rn&(1<<10-1) ^ rt<<10
 }
@@ -302,10 +303,11 @@ func (p *Prng) I() uint64 {
 	n := p.rn >> 10 // number of available limbs in buffer
 	if n == 0 {
 		(*Sponge)(p).Perm(nil)
-		n = p.rn & 31 // rate
+		n = p.rn & 31   // rate
+		p.rn ^= n << 10 // set number of available limbs to rate
 	}
 	n--
-	p.rn = p.rn&(1<<10-1) ^ n<<10
+	p.rn -= 1 << 10
 	return p.b[n]
 }
 
