@@ -284,16 +284,17 @@ func NewPrng(cp, nr, ns uint32) *Prng {
 
 //	Seeds Prng with x. First 25-cp elements of x at most are used for seeding.
 func (p *Prng) Seed(x []uint64) {
-	rt := int(p.rn & 31) // rate
-	if len(x) < rt {
-		rt = len(x)
+	rt := p.rn & 31 // rate
+	n := int(rt)
+	if len(x) < n {
+		n = len(x)
 	}
-	for i := 0; i < rt; i++ {
+	for i := 0; i < n; i++ {
 		p.b[i] ^= x[i]
 	}
 	// bits 10..14 of Prng.rn hold number of available limbs in buffer, initially zero
 	(*Sponge)(p).Perm(nil)
-	p.rn = p.rn&(1<<10-1) ^ uint32(rt)<<10
+	p.rn = p.rn&(1<<10-1) ^ rt<<10
 }
 
 //	Returns a random uint64
