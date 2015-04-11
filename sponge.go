@@ -209,6 +209,11 @@ func NewHash(cp, nr, ns uint32) *Hash {
 	return nil
 }
 
+func (h *Hash) Reset() {
+	h.s.Reset()
+	h.x = h.x[:0]
+}
+
 type slice struct { // not worth importing reflect
 	Data     uintptr
 	Len, Cap int
@@ -265,8 +270,7 @@ func (h *Hash) Sum() []byte {
 	setslc(&y, &r)
 	copy(y, h.s.b[:]) // copy result to r
 
-	h.s.Reset()
-	h.x = h.x[:0]
+	h.Reset()
 	return r
 }
 
