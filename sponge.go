@@ -282,6 +282,11 @@ func NewPrng(cp, nr, ns uint32) *Prng {
 	return nil
 }
 
+func (p *Prng) Reset() {
+	(*Sponge)(p).Reset()
+	p.rn &= 1<<10 - 1 // set number of available limbs to zero
+}
+
 //	Seeds Prng with x. First 25-cp elements of x at most are used for seeding.
 func (p *Prng) Seed(x []uint64) {
 	rt := p.rn & 31 // rate
