@@ -3,6 +3,7 @@
 package sponge
 
 import (
+	//"fmt"
 	"math"
 	"unsafe"
 )
@@ -53,21 +54,27 @@ func (s *Sponge) Reset() {
 	Uses a slightly modified Keccak permutation. See http://keccak.noekeon.org
 */
 func (s *Sponge) Perm(x []uint64) []uint64 {
+	rt := int(s.rn & 31) // rate
+	if x != nil && len(x) != rt {
+		//fmt.Println("wrong rate", len(x))
+		return nil
+	}
+	s.per(x)
+	return s.b[:rt]
+}
+
+/*	absorb x (may be nil or shorter than rate) & permute
+	other functions should use Perm() first, if tests are ok & no wrong rate message (other than intentional tests), then switch to per()
+*/
+func (s *Sponge) per(x []uint64) {
 	/*	Modified keccak permutation with a different constant applied to a different
 		lane in each round. This implementation fully unrolls the round function to
 		avoid inner loops, as well as pre-calculating shift offsets. From go.crypto/sha3.
 	*/
 	var t, r0, r1, r2, r3, r4 uint64
 	a := &s.b
-	rt := s.rn & 31 // rate
-
-	if x != nil { // absorb ?
-		if len(x) != int(rt) {
-			return nil
-		}
-		for i, v := range x {
-			a[i] ^= v
-		}
+	for i, v := range x {
+		a[i] ^= v
 	}
 
 	for i, k := s.rn>>5&31, 23; i > 0; i, k = i-1, k-1 { // nr
@@ -190,7 +197,6 @@ func (s *Sponge) Perm(x []uint64) []uint64 {
 		a[23] ^= r0 &^ r4
 		a[24] ^= r1 &^ r0
 	}
-	return a[:rt]
 }
 
 //	Sponge-based hashes
@@ -235,7 +241,7 @@ func (h *Hash) Write(x []byte) {
 
 	rt := cap(h.x) >> 3 // rate
 	for ; len(y) >= rt; y = y[rt:] {
-		h.s.Perm(y[:rt]) // consume x
+		h.s.per(y[:rt]) // consume x
 	}
 
 	rt = cap(h.x)        // 8*rate
@@ -263,7 +269,7 @@ func (h *Hash) Sum() []byte {
 	}
 	x[len(x)-1] |= 128 // last 1 & pad end
 
-	h.s.Perm(y) // absorb last block
+	h.s.per(y) // absorb last block
 
 	t = 8*25 - cap(x) // 8*capacity
 	r := make([]byte, t, t)
@@ -280,6 +286,7 @@ type Prng Sponge
 //	Same parameters with New() sponge.
 func NewPrng(cp, nr, ns uint32) *Prng {
 	p := new(Prng)
+	// bits 10..14 of Prng.rn hold number of available limbs in buffer, initially zero
 	if (*Sponge)(p).setpar(cp, nr, ns) {
 		return p
 	}
@@ -294,24 +301,19 @@ func (p *Prng) Reset() {
 //	Seeds Prng with x. First 25-cp elements of x at most are used for seeding.
 func (p *Prng) Seed(x []uint64) {
 	rt := p.rn & 31 // rate
-	n := int(rt)
-	if len(x) < n {
-		n = len(x)
+	n := len(x)
+	if n > int(rt) {
+		n = int(rt)
 	}
-	for i := 0; i < n; i++ {
-		p.b[i] ^= x[i]
-	}
-	// bits 10..14 of Prng.rn hold number of available limbs in buffer
-	// initially zero, set to rate here
-	(*Sponge)(p).Perm(nil)
-	p.rn = p.rn&(1<<10-1) ^ rt<<10
+	(*Sponge)(p).per(x[:n])
+	p.rn = p.rn&(1<<10-1) ^ rt<<10 // set number of available limbs to rate
 }
 
 //	Returns a random uint64
 func (p *Prng) I() uint64 {
 	n := p.rn >> 10 // number of available limbs in buffer
 	if n == 0 {
-		(*Sponge)(p).Perm(nil)
+		(*Sponge)(p).per(nil)
 		n = p.rn & 31   // rate
 		p.rn ^= n << 10 // set number of available limbs to rate
 	}
