@@ -368,3 +368,10 @@ func (p *Prng) G() (float64, float64) {
 	s = math.Sqrt(-2 * math.Log(s) / s)
 	return s * a, s * b
 }
+
+//	Returns an exponentially distributed float with unit mean
+func (p *Prng) E() float64 {
+	i := p.I()&^(3<<62) | (1<<10-1)<<52 // set sign=exponent=0 so it'll be a double from [1,2)
+	d := *(*float64)(unsafe.Pointer(&i))
+	return -math.Log(2 - d)
+}

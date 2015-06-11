@@ -127,17 +127,22 @@ func Test3(t *testing.T) {
 	for i := 999; i > 0; i-- {
 		d := p.U()
 		if d < 0 || d >= 1 {
-			t.Fatal("incorrect float", d)
+			t.Fatal("incorrect U()", d)
 		}
 
-		d2 := p.U2()
-		if d2 <= -1 || d2 >= 1 {
-			t.Fatal("incorrect float", d2)
+		d = p.U2()
+		if d <= -1 || d >= 1 {
+			t.Fatal("incorrect U2()", d)
+		}
+
+		d = p.E()
+		if d < 0 {
+			t.Fatal("incorrect E()", d)
 		}
 
 		x, y := p.G()
 		if x*x+y*y > 9 {
-			fmt.Println(x, y, d2)
+			fmt.Println(x, y, d)
 		}
 	}
 	p.Reset()
