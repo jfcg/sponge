@@ -220,6 +220,24 @@ func (h *Hash) Reset() {
 	h.x = h.x[:0]
 }
 
+//	Creates an identical copy. Useful for calculating intermediate hashes like:
+//
+//		h := NewHash(3, 11, 1)
+//		h.Write([]byte("FirstPart"))
+//
+//		f := h.Copy()
+//		fr := f.Sum() // hash of "FirstPart"
+//
+//		h.Write([]byte("SecondPart"))
+//		hr := h.Sum() // hash of "FirstPartSecondPart"
+func (h *Hash) Copy() *Hash {
+	r := new(Hash)
+	r.s = h.s
+	r.x = make([]byte, len(h.x), cap(h.x))
+	copy(r.x, h.x)
+	return r
+}
+
 type slice struct { // not worth importing reflect
 	Data     uintptr
 	Len, Cap int

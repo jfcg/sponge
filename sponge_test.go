@@ -5,12 +5,16 @@ package sponge
 import (
 	"fmt"
 	"testing"
+	"unsafe"
 )
 
-func equal(x, y []uint64) bool { // returns true iff slice data are equal
-	if len(x) != len(y) {
+func equal(x, y []uint64) bool { // returns true iff slice data are equal & inputs have different buffers
+	s := (*slice)(unsafe.Pointer(&y))
+	t := (*slice)(unsafe.Pointer(&x))
+	if s.Data == t.Data || len(x) != len(y) {
 		return false
 	}
+
 	for i := range x {
 		if x[i] != y[i] {
 			return false
@@ -20,20 +24,10 @@ func equal(x, y []uint64) bool { // returns true iff slice data are equal
 }
 
 func equalb(a, b []byte) bool { // returns true iff slice data are equal
-	if len(a) != len(b) {
-		return false
-	}
-
 	var x, y []uint64
 	setslc(&x, &a)
 	setslc(&y, &b)
-
-	for i := range x {
-		if x[i] != y[i] {
-			return false
-		}
-	}
-	return true
+	return equal(x, y)
 }
 
 func Test1(t *testing.T) {
@@ -142,7 +136,7 @@ func Test3(t *testing.T) {
 		}
 
 		x, y := p.G()
-		if x*x+y*y > 4 {
+		if x*x+y*y > 9 {
 			fmt.Println(x, y, d2)
 		}
 	}
@@ -155,4 +149,29 @@ func Test3(t *testing.T) {
 	if a1 != b1 || a2 != b2 || a3 != b3 || a4 != b4 {
 		t.Fatal("reset does not work")
 	}
+}
+
+func Test4(t *testing.T) {
+	s := []byte(`A cryptographic hash function is a hash function which is considered practically impossible to invert, that is, to recreate the input data from its hash value alone. These one-way hash functions have been called "the workhorses of modern cryptography".[1] The input data is often called the message, and the hash value is often called the message digest or simply the digest.`)
+	h := NewHash(3, 11, 1)
+	h.Write(s[:len(s)/2]) // 1st half
+	p1 := h.Sum()         // also resets h
+
+	h.Write(s) // whole
+	p2 := h.Sum()
+
+	h.Write(s[:len(s)/2]) // 1st half
+	f := h.Copy()
+	if f == h {
+		t.Fatal("must be a different Hash")
+	}
+	r1 := f.Sum()
+
+	h.Write(s[len(s)/2:]) // 2nd half
+	r2 := h.Sum()
+
+	if len(p1) != 24 || len(p2) != 24 || !equalb(p1, r1) || !equalb(p2, r2) {
+		t.Fatal("Copy() did not work!")
+	}
+	fmt.Printf("%x %x\n", p1, p2)
 }
