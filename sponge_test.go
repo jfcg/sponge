@@ -121,7 +121,7 @@ func Test3(t *testing.T) {
 	p := NewPrng(3, 13, 1)
 	a1, a2 := p.I(), p.I()
 
-	p.Seed([]uint64{1})
+	p.Seed(1)
 	a3, a4 := p.I(), p.I()
 
 	for i := 999; i > 0; i-- {
@@ -148,7 +148,7 @@ func Test3(t *testing.T) {
 	p.Reset()
 	b1, b2 := p.I(), p.I()
 
-	p.Seed([]uint64{1})
+	p.Seed(1)
 	b3, b4 := p.I(), p.I()
 
 	if a1 != b1 || a2 != b2 || a3 != b3 || a4 != b4 {
