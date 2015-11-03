@@ -4,14 +4,12 @@ package sponge
 
 import (
 	"fmt"
+	"sixb"
 	"testing"
-	"unsafe"
 )
 
 func equal(x, y []uint64) bool { // returns true iff slice data are equal & inputs have different buffers
-	s := (*slice)(unsafe.Pointer(&y))
-	t := (*slice)(unsafe.Pointer(&x))
-	if s.Data == t.Data || len(x) != len(y) {
+	if &x[0] == &y[0] || len(x) != len(y) {
 		return false
 	}
 
@@ -24,9 +22,8 @@ func equal(x, y []uint64) bool { // returns true iff slice data are equal & inpu
 }
 
 func equalb(a, b []byte) bool { // returns true iff slice data are equal
-	var x, y []uint64
-	setslc(&x, &a)
-	setslc(&y, &b)
+	x := sixb.Bs2is(a)
+	y := sixb.Bs2is(b)
 	return equal(x, y)
 }
 

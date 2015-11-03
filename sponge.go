@@ -5,6 +5,7 @@ package sponge
 import (
 	//"fmt"
 	"math"
+	"sixb"
 	"unsafe"
 )
 
@@ -238,24 +239,10 @@ func (h *Hash) Copy() *Hash {
 	return r
 }
 
-type slice struct { // not worth importing reflect
-	Data     uintptr
-	Len, Cap int
-}
-
-func setslc(y *[]uint64, x *[]byte) { // set y=x
-	s := (*slice)(unsafe.Pointer(y))
-	t := (*slice)(unsafe.Pointer(x))
-	s.Data = t.Data
-	s.Len = t.Len >> 3
-	s.Cap = s.Len
-}
-
 //	Writes x into the hash. Can be called multiple times with subsequent parts of the whole input. Works best with x whose length is a multiple of block length (8*(25-cp) bytes).
 func (h *Hash) Write(x []byte) {
 	x = append(h.x, x...) // start with any remaining chunk
-	var y []uint64
-	setslc(&y, &x)
+	y := sixb.Bs2is(x)
 
 	rt := cap(h.x) >> 3 // rate
 	for ; len(y) >= rt; y = y[rt:] {
@@ -265,16 +252,15 @@ func (h *Hash) Write(x []byte) {
 	rt = cap(h.x)        // 8*rate
 	x = x[len(x)/rt*rt:] // remaining chunk of x
 
-	copy(h.x[:rt], x)
 	h.x = h.x[:len(x)] // copy it into h.x
+	copy(h.x, x)
 }
 
 //	Calculate & return the hash sum (8*cp bytes), and reset the hash state.
 func (h *Hash) Sum() []byte {
 	lh := len(h.x)      // length of data remaining in h.x
 	x := h.x[:cap(h.x)] // whole h.x buffer
-	var y []uint64
-	setslc(&y, &x)
+	y := sixb.Bs2is(x)
 
 	t := (lh + 7) >> 3 // 10*1 pad h.x start
 	for i := t; i < len(y); i++ {
@@ -291,7 +277,7 @@ func (h *Hash) Sum() []byte {
 
 	t = 8*25 - cap(x) // 8*capacity
 	r := make([]byte, t, t)
-	setslc(&y, &r)
+	y = sixb.Bs2is(r)
 	copy(y, h.s.b[:]) // copy result to r
 
 	h.Reset()
