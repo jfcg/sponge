@@ -2,9 +2,9 @@
 package rng
 
 import (
+	"github.com/jfcg/sixb"
+	"github.com/jfcg/sponge"
 	"os"
-	"sixb"
-	"sponge"
 	"time"
 	"unsafe"
 )

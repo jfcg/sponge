@@ -1,11 +1,10 @@
-//	Author: Serhat Sevki Dincer, jfcgaussGmail
-
+//	Sponge-based cryptographic primitives
 package sponge
 
 import (
 	//"fmt"
+	"github.com/jfcg/sixb"
 	"math"
-	"sixb"
 	"unsafe"
 )
 
