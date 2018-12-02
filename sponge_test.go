@@ -21,14 +21,14 @@ func equal(x, y []uint64) bool { // returns true iff slice data are equal & inpu
 }
 
 func equalb(a, b []byte) bool { // returns true iff slice data are equal
-	x := sixb.Bs2is(a)
-	y := sixb.Bs2is(b)
+	x := sixb.BtI8(a)
+	y := sixb.BtI8(b)
 	return equal(x, y)
 }
 
 func Test1(t *testing.T) {
-	ic := []uint32{0, 1, 13, 14} // invalid capacities
-	ir := []uint32{0, 1, 25, 26} // invalid rounds
+	ic := []uint32{0, 13, 14} // invalid capacities
+	ir := []uint32{0, 25, 26} // invalid rounds
 	for i, c := range ic {
 		for k, r := range ir {
 			if New(c, r, uint32(4*i+k)) != nil {
@@ -81,8 +81,9 @@ func tst2(x []byte, t *testing.T) {
 
 		for i := 0; i <= len(x); i++ {
 			h.Write(x[:i]) // whole input
-			a := h.Sum()
+			a := sixb.Copy(h.Sum())
 
+			h.Reset()
 			h.Write(x[:i/2]) // input as two pieces
 			h.Write(x[i/2 : i])
 			b := h.Sum()
@@ -91,6 +92,7 @@ func tst2(x []byte, t *testing.T) {
 				t.Fatal("must have same hash", c, i)
 			}
 			r = append(r, a)
+			h.Reset()
 		}
 	}
 
@@ -156,11 +158,13 @@ func Test4(t *testing.T) {
 	s := []byte(`A cryptographic hash function is a hash function which is considered practically impossible to invert, that is, to recreate the input data from its hash value alone. These one-way hash functions have been called "the workhorses of modern cryptography".[1] The input data is often called the message, and the hash value is often called the message digest or simply the digest.`)
 	h := NewHash(3, 11, 1)
 	h.Write(s[:len(s)/2]) // 1st half
-	p1 := h.Sum()         // also resets h
+	p1 := sixb.Copy(h.Sum())
 
+	h.Reset()
 	h.Write(s) // whole
-	p2 := h.Sum()
+	p2 := sixb.Copy(h.Sum())
 
+	h.Reset()
 	h.Write(s[:len(s)/2]) // 1st half
 	f := h.Copy()
 	if f == h {

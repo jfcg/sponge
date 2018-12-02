@@ -53,7 +53,7 @@ func initrng(p *sponge.Prng, ns uint32) {
 		h.Write([]byte(v))
 	}
 	sd := h.Sum()
-	sy := sixb.Bs2is(sd)
+	sy := sixb.BtI8(sd)
 	p.Seed(sy...)
 }
 
@@ -64,12 +64,12 @@ func CreateSession() string {
 	var br [21]byte
 
 	for i, k := 0, 0; i < 15; i, k = i+3, k+4 {
-		br[k] = sixb.Sb2an(db[i] & 63)
-		br[k+1] = sixb.Sb2an(db[i]>>6 ^ db[i+1]&15<<2)
-		br[k+2] = sixb.Sb2an(db[i+1]>>4 ^ db[i+2]&3<<4)
-		br[k+3] = sixb.Sb2an(db[i+2] >> 2)
+		br[k] = sixb.Sb2an[db[i]&63]
+		br[k+1] = sixb.Sb2an[db[i]>>6^db[i+1]&15<<2]
+		br[k+2] = sixb.Sb2an[db[i+1]>>4^db[i+2]&3<<4]
+		br[k+3] = sixb.Sb2an[db[i+2]>>2]
 	}
-	br[20] = sixb.Sb2an(db[15] & 63)
+	br[20] = sixb.Sb2an[db[15]&63]
 	return string(br[:])
 }
 

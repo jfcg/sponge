@@ -14,7 +14,7 @@ type Sponge struct {
 	rn, ns uint32 // { rate (=25-capacity), number of rounds }, namespace
 }
 
-/*	Creates a Sponge. cp (capacity) must be in 2..12 (3+ recommended), nr (number of rounds) must be in 2..24 (11+ recommended), otherwise returns nil. Sponge capacity will be 64*cp bits.
+/*	Creates a Sponge. cp (capacity) must be in 1..12 (3+ recommended), nr (number of rounds) must be in 1..24 (11+ recommended), otherwise returns nil. Sponge capacity will be 64*cp bits.
 
 	ns (namespace) & nr parameters determine a sponge's type. Different types of sponges will always produce different outputs.
 */
@@ -28,7 +28,7 @@ func New(cp, nr, ns uint32) *Sponge {
 
 //	Set sponge parameters. Returns true if successful.
 func (s *Sponge) setpar(cp, nr, ns uint32) bool {
-	if cp < 2 || cp > 12 || nr < 2 || nr > 24 {
+	if cp < 1 || cp > 12 || nr < 1 || nr > 24 {
 		return false
 	}
 	s.b[24] = uint64(ns) // namespace lane
@@ -39,10 +39,10 @@ func (s *Sponge) setpar(cp, nr, ns uint32) bool {
 }
 
 func (s *Sponge) Reset() {
-	for i := 0; i < 24; i++ {
+	s.b[24] = uint64(s.ns) // namespace lane
+	for i := 23; i >= 0; i-- {
 		s.b[i] = 0
 	}
-	s.b[24] = uint64(s.ns) // namespace lane
 }
 
 /*	If x (with correct length = 25-cp) is provided: x is absorbed and readable state is returned.
@@ -73,8 +73,8 @@ func (s *Sponge) per(x []uint64) {
 	*/
 	var t, r0, r1, r2, r3, r4 uint64
 	a := &s.b
-	for i, v := range x {
-		a[i] ^= v
+	for i := len(x) - 1; i >= 0; i-- {
+		a[i] ^= x[i]
 	}
 
 	for i, k := s.rn>>5&31, 23; i > 0; i, k = i-1, k-1 { // nr
@@ -205,7 +205,7 @@ type Hash struct {
 	x []byte
 }
 
-//	Same parameters with New() sponge. Hash output will be 8*cp bytes.
+//	Same parameters with New() sponge. Hash output will be 8*cp bytes. *Hash can be safely cast to *Prng or *Sponge, makes sense after Sum().
 func NewHash(cp, nr, ns uint32) *Hash {
 	h := new(Hash)
 	if h.s.setpar(cp, nr, ns) {
@@ -238,10 +238,10 @@ func (h *Hash) Copy() *Hash {
 	return r
 }
 
-//	Writes x into the hash. Can be called multiple times with subsequent parts of the whole input. Works best with x whose length is a multiple of block length (8*(25-cp) bytes).
+//	Writes x into Hash. Can be called multiple times with subsequent parts of the whole input. Works best with x whose length is a multiple of block length (8*(25-cp) bytes).
 func (h *Hash) Write(x []byte) {
 	x = append(h.x, x...) // start with any remaining chunk
-	y := sixb.Bs2is(x)
+	y := sixb.BtI8(x)
 
 	rt := cap(h.x) >> 3 // rate
 	for ; len(y) >= rt; y = y[rt:] {
@@ -255,11 +255,11 @@ func (h *Hash) Write(x []byte) {
 	copy(h.x, x)
 }
 
-//	Calculate & return the hash sum (8*cp bytes), and reset the hash state.
+//	Calculate & return Hash sum (8*cp bytes). Sum() should be called once after a number of Write()s, after which only Reset() or casting makes sense. The result is part of internal Hash buffer, should not be written to and is available until Reset().
 func (h *Hash) Sum() []byte {
 	lh := len(h.x)      // length of data remaining in h.x
 	x := h.x[:cap(h.x)] // whole h.x buffer
-	y := sixb.Bs2is(x)
+	y := sixb.BtI8(x)
 
 	t := (lh + 7) >> 3 // 10*1 pad h.x start
 	for i := t; i < len(y); i++ {
@@ -274,13 +274,8 @@ func (h *Hash) Sum() []byte {
 
 	h.s.per(y) // absorb last block
 
-	t = 8*25 - cap(x) // 8*capacity
-	r := make([]byte, t, t)
-	y = sixb.Bs2is(r)
-	copy(y, h.s.b[:]) // copy result to r
-
-	h.Reset()
-	return r
+	t = 25 - int(h.s.rn&31) // sponge capacity
+	return sixb.I8tB(h.s.b[:t])
 }
 
 //	Pseudo Random Number Generator
@@ -301,7 +296,7 @@ func (p *Prng) Reset() {
 	p.rn &= 1<<10 - 1 // set number of available limbs to zero
 }
 
-//	Seeds Prng with x. First 25-cp elements of x at most are used for seeding.
+//	Seeds Prng. At most 25-cp arguments are used for seeding.
 func (p *Prng) Seed(x ...uint64) {
 	rt := p.rn & 31 // rate
 	n := len(x)
